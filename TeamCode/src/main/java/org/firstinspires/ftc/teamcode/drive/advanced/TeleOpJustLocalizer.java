@@ -1,117 +1,156 @@
-package org.firstinspires.ftc.teamcode.drive.advanced;
+package org.firstinspires.ftc.teamcode.drive;
 
+import androidx.annotation.NonNull;
+
+import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.roadrunner.control.PIDCoefficients;
+import com.acmerobotics.roadrunner.drive.DriveSignal;
+import com.acmerobotics.roadrunner.drive.MecanumDrive;
+import com.acmerobotics.roadrunner.followers.HolonomicPIDVAFollower;
+import com.acmerobotics.roadrunner.followers.TrajectoryFollower;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.trajectory.Trajectory;
+import com.acmerobotics.roadrunner.trajectory.TrajectoryBuilder;
+import com.acmerobotics.roadrunner.trajectory.constraints.AngularVelocityConstraint;
+import com.acmerobotics.roadrunner.trajectory.constraints.MecanumVelocityConstraint;
+import com.acmerobotics.roadrunner.trajectory.constraints.MinVelocityConstraint;
+import com.acmerobotics.roadrunner.trajectory.constraints.ProfileAccelerationConstraint;
+import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
+import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
+import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-import org.firstinspires.ftc.teamcode.drive.StandardTrackingWheelLocalizer;
 
-/**
- * This opmode assumes you have your own robot class and simply wish to utilize Road Runner's
- * packaged localizer tools.
- */
-@TeleOp(group = "advanced")
-public class TeleOpJustLocalizer extends LinearOpMode {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.hardwareMap;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MAX_ACCEL;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MAX_ANG_ACCEL;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MAX_ANG_VEL;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MAX_VEL;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MOTOR_VELO_PID;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.RUN_USING_ENCODER;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.TRACK_WIDTH;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.encoderTicksToInches;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kA;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kStatic;
+import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kV;
+//actually ignore this for now
+@Config
+@Autonomous(group = "drive")
+public class Wkey  extends LinearOpMode{
+    public static double DISTANCE = 50;
+
     @Override
     public void runOpMode() throws InterruptedException {
-        // Initialize your own robot class
-        Robot robot = new Robot(hardwareMap);
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
-        // This is assuming you are using StandardTrackingWheelLocalizer.java
-        // Switch this class to something else (Like TwoWheeTrackingLocalizer.java) if your
-        // configuration differs
-        StandardTrackingWheelLocalizer myLocalizer = new StandardTrackingWheelLocalizer(hardwareMap);
+        SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
+        Pose2d startPose = new Pose2d(0, 0, Math.toRadians(0));
 
-        // Retrieve our pose from the PoseStorage.currentPose static field
-        // See AutoTransferPose.java for further details
-        myLocalizer.setPoseEstimate(PoseStorage.currentPose);
+        /*
+         *
+         * travel_distance("forward", (2*610));
+            travel_distance("forward", (1*610));
+            travel_distance("left", (1*610));
+            rotate_degrees("counterclockwise", (90));
+            rotate_degrees("counterclockwise", (180));
+            travel_distance("forward", (2*610));
+            travel_distance("forward", (3*610));
+            rotate_degrees("counterclockwise", (180));
+            travel_distance("forward", (1*610));
+             rotate_degrees("counterclockwise", (180));
+            travel_distance("forward", (1*610));
+            rotate_degrees("counterclockwise", (180));
+            travel_distance("forawrd", (2*610));
+            travel_distance("left", (1*610));
+            travel_distance("right", (1*610));
+            travel_distance("forward", (3*610));
+         */
+
+        drive.setPoseEstimate(startPose);
+
+        Trajectory begging = drive.trajectoryBuilder(startPose)
+                .forward(72)
+                .build();
+
+        Trajectory next1 = drive.trajectoryBuilder(begging.end())
+
+                .strafeLeft(24)
+                .build();
+
+        Trajectory next2 = drive.trajectoryBuilder(next1.end())
+                .strafeLeft(24)
+                .build();
+
+        Trajectory next3 = drive.trajectoryBuilder(next2.end(), Math.toRadians(270))
+                .forward(48)
+                .build();
+
+        Trajectory next4 = drive.trajectoryBuilder(next3.end())
+                .forward(72)
+                .build();
+
+        Trajectory next5 = drive.trajectoryBuilder(next4.end(), Math.toRadians(180))
+                .forward(24)
+                .build();
+
+        Trajectory next6 = drive.trajectoryBuilder(next5.end(), Math.toRadians(180))
+                .forward(24)
+                .build();
+
+
+        Trajectory next7 = drive.trajectoryBuilder(next6.end(), Math.toRadians(180))
+                .forward(48)
+                .build();
+
+        Trajectory next8 = drive.trajectoryBuilder(next7.end())
+                .strafeLeft(24)
+                .build();
+
+        Trajectory next9 = drive.trajectoryBuilder(next8.end())
+                .strafeRight(24)
+                .build();
+
+        Trajectory finish = drive.trajectoryBuilder(next9.end())
+                .forward(72)
+                .build();
 
         waitForStart();
 
-        if (isStopRequested()) return;
+        if(isStopRequested()) return;
 
-        while (opModeIsActive() && !isStopRequested()) {
-            // Make sure to call myLocalizer.update() on *every* loop
-            // Increasing loop time by utilizing bulk reads and minimizing writes will increase your
-            // odometry accuracy
-            myLocalizer.update();
-
-            // Retrieve your pose
-            Pose2d myPose = myLocalizer.getPoseEstimate();
-
-            // Print your pose to telemetry
-            telemetry.addData("x", myPose.getX());
-            telemetry.addData("y", myPose.getY());
-            telemetry.addData("heading", myPose.getHeading());
-            telemetry.update();
-
-            // Teleop driving part
-            // Mecanum example code from gm0
-            // https://gm0.org/en/stable/docs/software/mecanum-drive.html
-            double x = gamepad1.left_stick_x;
-            double y = -gamepad1.left_stick_y;
-            double rx = gamepad1.right_stick_x;
-
-            // Set drive power
-            robot.setDrivePower(x, y, rx);
+        drive.followTrajectory(begging);
+        drive.followTrajectory(next1);
+        drive.followTrajectory(next2);
+        drive.turn(Math.toRadians(90));
+        drive.turn(Math.toRadians(180));
+        drive.followTrajectory(next3);
+        drive.followTrajectory(next4);
+        drive.turn(Math.toRadians(180));
+        drive.followTrajectory(next5);
+        drive.turn(Math.toRadians(180));
+        drive.followTrajectory(next6);
+        drive.turn(Math.toRadians(180));
+        drive.followTrajectory(next7);
+        drive.followTrajectory(next8);
+        drive.followTrajectory(next9);
+        drive.followTrajectory(finish);
         }
+
     }
 
-    // Simple custom robot class
-    // Holds the hardware for a basic mecanum drive
-    class Robot {
-        private DcMotorEx leftFront, leftRear, rightRear, rightFront;
 
-        public Robot(HardwareMap hardwareMap) {
-            // Initialize motors
-            leftFront = hardwareMap.get(DcMotorEx.class, "leftFront");
-            leftRear = hardwareMap.get(DcMotorEx.class, "leftRear");
-            rightRear = hardwareMap.get(DcMotorEx.class, "rightRear");
-            rightFront = hardwareMap.get(DcMotorEx.class, "rightFront");
-
-            // Reverse right side motor directions
-            // This may need to be flipped to the left side depending on your motor rotation direction
-            rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
-            rightRear.setDirection(DcMotorSimple.Direction.REVERSE);
-
-            // Turn on bulk reads to help optimize loop times
-            for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
-                module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
-            }
-        }
-
-        // Mecanum example code from gm0
-        // https://gm0.org/en/stable/docs/software/mecanum-drive.html
-        public void setDrivePower(double x, double y, double rx) {
-            double powerFrontLeft = y + x + rx;
-            double powerFrontRight = y - x - rx;
-            double powerBackLeft = y - x + rx;
-            double powerBackRight = y + x - rx;
-
-            if (Math.abs(powerFrontLeft) > 1 || Math.abs(powerBackLeft) > 1 ||
-                    Math.abs(powerFrontRight) > 1 || Math.abs(powerBackRight) > 1) {
-                // Find the largest power
-                double max;
-                max = Math.max(Math.abs(powerFrontLeft), Math.abs(powerBackLeft));
-                max = Math.max(Math.abs(powerFrontRight), max);
-                max = Math.max(Math.abs(powerBackRight), max);
-
-                // Divide everything by max (it's positive so we don't need to worry
-                // about signs)
-                powerFrontLeft /= max;
-                powerBackLeft /= max;
-                powerFrontRight /= max;
-                powerBackRight /= max;
-            }
-
-            leftFront.setPower(powerFrontLeft);
-            rightFront.setPower(powerFrontRight);
-            leftRear.setPower(powerBackLeft);
-            rightRear.setPower(powerBackRight);
-        }
-    }
-}
